@@ -17,6 +17,8 @@ import csv
 
 # Normalize pixel values to be between 0 and 1
 train_images, test_images = train_images / 255.0, test_images / 255.0
+validate_images, validate_labels= test_images[0:2000], test_labels[0:2000]
+test_images, test_labels= test_images[2000:], test_labels[2000:]
 #train_images, train_labels = train_images[0:10000], train_labels[0:10000]
 #test_images, test_labels = test_images[0:200], test_labels[0:200]
 
@@ -37,24 +39,21 @@ plt.show()
 
 #TRAINING
 noise=[0]
-#put amount of desired noise in training
 for m in noise:
   parameters={'test_accuracy': None}
   fintest=[]
   for j in range(10):
     print('j', j)
     model=None
+    val_acc_vals=[]
     for i in range(1,4):
       print('i', i)
-      #epochs
       noise_dict={1: m, 2: m, 3: m}
       if i !=1:
-        #use weights from previous epochs
         weights0=model.get_weights()
         del(model)
         tf.compat.v1.reset_default_graph()
       print('starting model')
-      #Begin model training
       model = models.Sequential()
       model.add(layers.Conv2D(32, (3, 3), input_shape=(32,32,3)))
       model.add(layers.Activation('relu'))
@@ -78,14 +77,12 @@ for m in noise:
       if i != 1:
           model.set_weights(weights0)
       history = model.fit(train_images, train_labels, epochs=3, 
-                        validation_data=(test_images, test_labels))
+                        validation_data=(validate_images, validate_labels))
       print('ending model')
       if i==3:
         print('test model')
-        #begin model testing
         fintest_trial=[]
         weights1=model.get_weights()
-        #get weights from trained model
         for n in range(0,51):
             print('n', n)
             del(model)
@@ -112,10 +109,13 @@ for m in noise:
                       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       metrics=['accuracy'])
             model.set_weights(weights1)
-            history = model.fit(train_images[0:5], train_labels[0:5], epochs=1, 
-                        validation_data=(test_images, test_labels))
-            fintest_trial=fintest_trial+history.history['val_accuracy']
+            #history = model.fit(train_images[0:5], train_labels[0:5], epochs=1, 
+                   #     validation_data=(test_images, test_labels))
+            test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=0)
+            #fintest_trial=fintest_trial+history.history['val_accuracy']
+            fintest_trial.append(test_acc)
             #fintest_trial.append(test_acc)
+            #print('acc vals', fintest_trial)
             print('acc vals', fintest_trial)
         fintest.append(fintest_trial)
 
