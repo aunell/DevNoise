@@ -79,43 +79,43 @@ for m in noise:
       history = model.fit(train_images, train_labels, epochs=3, 
                         validation_data=(validate_images, validate_labels))
       print('ending model')
-      if i==3:
+          model1=model  
+    #TESTING
+    if i==3:
         print('test model')
         fintest_trial=[]
-        weights1=model.get_weights()
+        weights1=model1.get_weights()
+        #getting weights from trained model
         for n in range(0,51):
             print('n', n)
-            del(model)
+            #amount of noise == n/1000
+            del(model1)
             tf.compat.v1.reset_default_graph()
             n=n/1000
-            model = models.Sequential()
-            model.add(layers.Conv2D(32, (3, 3), input_shape=(32,32,3)))
-            model.add(layers.Activation('relu'))
-            model.add(layers.GaussianNoise(n))
-            model.add(layers.MaxPooling2D((2, 2)))
+            
+            visible = layers.Input(shape=(32,32,3))
+            conv1 = layers.Conv2D(32, kernel_size=(3,3), activation='relu')(visible)
+            noise1 = layers.GaussianNoise(n)(conv1, training=True)
+            pool1 = layers.MaxPooling2D(pool_size=(2, 2))(noise1)
 
-            model.add(layers.Conv2D(64, (3, 3)))
-            model.add(layers.Activation('relu'))
-            model.add(layers.GaussianNoise(n))
-            model.add(layers.MaxPooling2D((2, 2)))
+            conv2 = layers.Conv2D(64, kernel_size=(3,3), activation='relu')(pool1)
+            noise2 = layers.GaussianNoise(n)(conv2, training=True)
+            pool2 = layers.MaxPooling2D(pool_size=(2, 2))(noise2)
 
-            model.add(layers.Conv2D(64, (3, 3)))
-            model.add(layers.Activation('relu'))
-            model.add(layers.GaussianNoise(n))
-            model.add(layers.Flatten())
-            model.add(layers.Dense(64, activation='relu'))
-            model.add(layers.Dense(10))
+            conv3 = layers.Conv2D(64, kernel_size=(3,3), activation='relu')(pool2)
+            noise1 = layers.GaussianNoise(n)(conv3, training=True)
+            flat = layers.Flatten()(noise1)
+            hidden1 = layers.Dense(64, activation='relu')(flat)
+            output = layers.Dense(10)(hidden1)
+            #making the model with the amount of noise, we will then test this model that has pre-trained weights
+            
+            model1 = Model(inputs=visible, outputs=output)
             model.compile(optimizer='adam',
                       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       metrics=['accuracy'])
             model.set_weights(weights1)
-            #history = model.fit(train_images[0:5], train_labels[0:5], epochs=1, 
-                   #     validation_data=(test_images, test_labels))
             test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=0)
-            #fintest_trial=fintest_trial+history.history['val_accuracy']
             fintest_trial.append(test_acc)
-            #fintest_trial.append(test_acc)
-            #print('acc vals', fintest_trial)
             print('acc vals', fintest_trial)
         fintest.append(fintest_trial)
 
