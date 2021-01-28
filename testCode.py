@@ -38,15 +38,14 @@ for i in range(25):
 plt.show()
 
 #TRAINING
-noise=[0]
+noise=[0, 0.05]
+parameters={}
 for m in noise:
-  parameters={'test_accuracy': None}
+  model=None
+  parameters[m]=None
   fintest=[]
-  for j in range(10):
-    print('j', j)
-    model=None
-    val_acc_vals=[]
-    for i in range(1,4):
+  val_acc_vals=[]
+  for i in range(1,4):
       print('i', i)
       noise_dict={1: m, 2: m, 3: m}
       if i !=1:
@@ -79,16 +78,16 @@ for m in noise:
       history = model.fit(train_images, train_labels, epochs=3, 
                         validation_data=(validate_images, validate_labels))
       print('ending model')
-          model1=model  
-    #TESTING
-    if i==3:
-        print('test model')
-        fintest_trial=[]
-        weights1=model1.get_weights()
-        #getting weights from trained model
-        for n in range(0,51):
+        
+  print('test model')
+  model1=model
+  name=str(m)+'model'
+  path='/om/user/aunell/data/'+name
+  model.save(path)
+  weights1=model1.get_weights()
+  fintest_trial=[]
+  for n in range(0,51):
             print('n', n)
-            #amount of noise == n/1000
             del(model1)
             tf.compat.v1.reset_default_graph()
             n=n/1000
@@ -107,76 +106,132 @@ for m in noise:
             flat = layers.Flatten()(noise1)
             hidden1 = layers.Dense(64, activation='relu')(flat)
             output = layers.Dense(10)(hidden1)
-            #making the model with the amount of noise, we will then test this model that has pre-trained weights
-            
+
             model1 = Model(inputs=visible, outputs=output)
+            model1.compile(optimizer='adam',
+                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      metrics=['accuracy'])
+            model1.set_weights(weights1)
+            test_loss, test_acc = model1.evaluate(test_images,  test_labels, verbose=0)
+            fintest_trial.append(test_acc)
+  parameters[m]=fintest_trial
+            
+   #biomimetic training
+  if m==0:
+        #CleartoNoise
+        weights0=model.get_weights()
+        model=None
+        noise_dict={1: .05, 2: .05, 3: .05}
+        print('starting biomodel')
+        model = models.Sequential()
+        model.add(layers.Conv2D(32, (3, 3), input_shape=(32,32,3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[1]))
+        model.add(layers.MaxPooling2D((2, 2)))
+
+        model.add(layers.Conv2D(64, (3, 3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[2]))
+        model.add(layers.MaxPooling2D((2, 2)))
+
+        model.add(layers.Conv2D(64, (3, 3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[3]))
+        model.add(layers.Flatten())
+        model.add(layers.Dense(64, activation='relu'))
+        model.add(layers.Dense(10))
+        model.compile(optimizer='adam',
+                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      metrics=['accuracy'])
+        model.set_weights(weights0)
+            
+        callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=4, mode= 'min')
+        history = model.fit(train_images, train_labels,
+                            validation_data=(validate_images, validate_labels), epochs=50,
+                             callbacks=[callback])
+        
+        print('ending biomodel')
+  else:
+    #NoisetoClear
+        weights0=model.get_weights()
+        model=None
+        noise_dict={1: 0, 2: 0, 3: 0}
+        print('starting biomodel')
+        model = models.Sequential()
+        model.add(layers.Conv2D(32, (3, 3), input_shape=(32,32,3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[1]))
+        model.add(layers.MaxPooling2D((2, 2)))
+
+        model.add(layers.Conv2D(64, (3, 3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[2]))
+        model.add(layers.MaxPooling2D((2, 2)))
+
+        model.add(layers.Conv2D(64, (3, 3)))
+        model.add(layers.Activation('relu'))
+        model.add(layers.GaussianNoise(noise_dict[3]))
+        model.add(layers.Flatten())
+        model.add(layers.Dense(64, activation='relu'))
+        model.add(layers.Dense(10))
+        model.compile(optimizer='adam',
+                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                      metrics=['accuracy'])
+        model.set_weights(weights0)
+            
+        callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=4, mode= 'min')
+        history = model.fit(train_images, train_labels,
+                            validation_data=(validate_images, validate_labels), epochs=50,
+                             callbacks=[callback])
+        print('ending biomodel')
+          
+  print('test model')
+  fintest_trial=[]
+  weights=model.get_weights()
+  name=str(m)+'bio'
+  modelName=str(m)+'biomodel'
+  path='/om/user/aunell/data/'+modelName
+  model.save(path)
+  for n in range(0,51):
+            print(fintest_trial)
+            print('n', n)
+            del(model)
+            tf.compat.v1.reset_default_graph()
+            n=n/1000
+            
+            visible = layers.Input(shape=(32,32,3))
+            conv1 = layers.Conv2D(32, kernel_size=(3,3), activation='relu')(visible)
+            noise1 = layers.GaussianNoise(n)(conv1, training=True)
+            pool1 = layers.MaxPooling2D(pool_size=(2, 2))(noise1)
+
+            conv2 = layers.Conv2D(64, kernel_size=(3,3), activation='relu')(pool1)
+            noise2 = layers.GaussianNoise(n)(conv2, training=True)
+            pool2 = layers.MaxPooling2D(pool_size=(2, 2))(noise2)
+
+            conv3 = layers.Conv2D(64, kernel_size=(3,3), activation='relu')(pool2)
+            noise1 = layers.GaussianNoise(n)(conv3, training=True)
+            flat = layers.Flatten()(noise1)
+            hidden1 = layers.Dense(64, activation='relu')(flat)
+            output = layers.Dense(10)(hidden1)
+
+            model = Model(inputs=visible, outputs=output)
             model.compile(optimizer='adam',
                       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       metrics=['accuracy'])
-            model.set_weights(weights1)
+            model.set_weights(weights)
             test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=0)
             fintest_trial.append(test_acc)
-            print('acc vals', fintest_trial)
-        fintest.append(fintest_trial)
-
-  parameters['test_accuracy']= np.mean(fintest, axis=0)
-  #Average values of accuracy at each test noise level for all 10 iterations
+  parameters[name]=fintest_trial
   
-  para_df = pd.DataFrame.from_dict(parameters, orient='index')
-  path= '/om/user/aunell/data/TestNoise/0TrainNoise/raw/noise.csv'
-  para_df.to_csv(path)
-  #save parameters dict as csv
-  
-#OPEN CSV FILE AND PLOT
-l0=[]
-with open('/om/user/aunell/data/TestNoise/0TrainNoise/raw/noise.csv', newline='') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    for row in spamreader:
-        l0.append(row)
-fin0=l0[1][0]
-fin0=fin0.split(',')
-fin0=fin0[1:]
-new0=[]
-for i in fin0:
-    new0.append(float(i))
-
-l3=[]
-with open('/om/user/aunell/data/TestNoise/03TrainNoise/raw/noise.csv', newline='') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    for row in spamreader:
-        l3.append(row)
-fin3=l3[2][0]
-fin3=fin3.split(',')
-fin3=fin3[1:52]
-new3=[]
-for i in fin3:
-    new3.append(float(i))
-print(new3)
-
-l5=[]
-with open('/om/user/aunell/data/TestNoise/05TrainNoise/raw/noise.csv', newline='') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    for row in spamreader:
-        l5.append(row)
-fin5=l5[2][0]
-fin5=fin5.split(',')
-fin5=fin5[1:52]
-new5=[]
-for i in fin5:
-    new5.append(float(i))
-print(new5)
-
-
+#PLOT
 x=range(0,51)
-plt.plot(x, new0,label='0 Noise in Training')
-plt.plot(x, new3, label='.03 Noise in Training')
-plt.plot(x, new5, label='.05 Noise in Training')
-#title=str('epoch'+str(i))
-#plt.title(title)
+print(len(parameters['0bio']))
+plt.plot(x, parameters[0],label='0 Noise in Training')
+plt.plot(x, parameters[.05], label='.05 Noise in Training')
+plt.plot(x, parameters['0bio'], label='Clear to Noise')
+plt.plot(x, parameters['0.05bio'], label='Noise to Clear')
 plt.xlabel('Noise (times a factor of 1000)')
-#plt.xticks(np.arange(0, .055, step=0.005))
 plt.ylabel('Accuracy')
 plt.legend()
-plt.savefig('/om/user/aunell/data/TestNoise/results/testing.png')
-#plt.savefig('/om/user/aunell/data/Post-Activation/20TrainingConsistent/results/epoch_all.png')
+plt.savefig('/om/user/aunell/data/TestNoise/results/biomimeticTesting.png')
 plt.show()
