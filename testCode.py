@@ -22,6 +22,13 @@ test_images, test_labels= test_images[2000:], test_labels[2000:]
 #train_images, train_labels = train_images[0:10000], train_labels[0:10000]
 #test_images, test_labels = test_images[0:200], test_labels[0:200]
 
+#UNCOMMENT THE FOLLOWING IF GRAYSCALE TEST IMAGES DESIRED
+# from skimage.color import rgb2gray, gray2rgb
+# test_images = rgb2gray(test_images) 
+##This converts to grayscale
+# test_images= gray2rgb(test_images)
+##This converts the grayscale image to have 3 channels so it can work with our CNN
+
 #SHOW CLASS EXAMPLES
 class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer',
                'dog', 'frog', 'horse', 'ship', 'truck']
