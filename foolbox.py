@@ -24,25 +24,15 @@ for path in paths:
     preprocessing = dict()
     bounds = (0, 32)
     fmodel = TensorFlowModel(model, bounds=bounds, preprocessing=preprocessing)
-
-    (train_images, train_labels), (test_images, test_labels) = datasets.cifar10.load_data()
-
-    # Normalize pixel values to be between 0 and 1
-    train_images, test_images = train_images / 255.0, test_images / 255.0
-    #validate_images, validate_labels= test_images[0:200], test_labels[0:200]
-    test_images, test_labels= test_images[:200], test_labels[:200]
-
-
-    #images, labels = fb.utils.samples(fmodel, dataset=datasets.cifar10.load_data(), batchsize=16)
-
-    #print('pre-accuracy', fb.utils.accuracy(fmodel, test_images, test_labels))
-
-    epsilons = np.linspace(0.0, 0.005, num=20)
-
+    images, labels = fb.utils.samples(fmodel, dataset='cifar10', batchsize=16)
+    print('pre-accuracy', fb.utils.accuracy(fmodel, images, labels))
+    epsilons = np.linspace(0.0, 0.5, num=20)
     attack = fb.attacks.LinfDeepFoolAttack()
-
-    raw, clipped, is_adv = attack(fmodel, test_images, test_labels, epsilons=epsilons)
-
-    robust_accuracy = 1 - is_adv.float32().mean(axis=-1)
-    plt.plot(epsilons, robust_accuracy.numpy())
-    plt.title(path[21:])
+    raw, clipped, is_adv = attack(fmodel, images, labels, epsilons=epsilons)
+    is_adv=is_adv.numpy()
+    print(is_adv)
+    robust_accuracy = 1 - is_adv.mean(axis=-1)
+    print(is_adv.mean(axis=-1))
+    plt.plot(epsilons, robust_accuracy, label=path[21:])
+    plt.ylabel('Accuracy')
+    plt.legend()
